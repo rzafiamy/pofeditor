@@ -1,0 +1,503 @@
+_DEBUT_
+_NP_
+[ENTETE]:{GÉNÉRATEUR DE FICHIER ODT}
+[PIED]:{Rija ZAFIAMY _TAB(4)Page }
+
+[TITRE1]:{Introduction}
+	[PGRAPHE]:
+	{
+		Les outils de traitement de texte actuels deviennent de plus en plus 
+		complexes. Il faudra beaucoup de temps pour apprendre à les manipuler. 
+		Mais est-ce que ça en vaut la peine de les apprendre ? Certains utilisateurs 
+		ont plutôt besoin d'un outil simple et efficace auquel ils n'auront plus 
+		à réfléchir longtemps pour rédiger leurs rapports, CV, .. 
+	}
+	[PGRAPHE]:
+	{
+		Pof (Perl openoffice ) est un format simple de fichier qui vous 
+		offre la  simplicité et l'efficacité. Dans ce document vous allez 
+		voir que rédiger un document c'est tout simplement écrire. Pas 
+		besoin de chercher partout pour faire des choses simples. 
+	}
+	[PGRAPHE]:
+	{
+		Dans  ce document nous présenterons le script perl editeur.pl , 
+		l'API "openoffice-oodoc", ensuite nous expliquerons en détail 
+		comment utiliser notre éditeur ainsi que la structure d'un 
+		fichier pof.
+	}
+	[PGRAPHE]:
+	{
+		POF est à la base un script que j'ai développé pour générer mon 
+		rapport de stage. J'aimerais structurer mon rapport de stage et 
+		faciliter son traitement. C'est à dire appliquer différents styles 
+		pour finalement retenir la meilleure. Appliquer des traductions 
+		automatiques, des corrections d'orthographe automatiques,... 
+		A partir du moment où vous séparez le style et le contenu d'un 
+		document , il est facile de le manipuler.
+	}
+_NP_
+[TITRE1]:{Le script perl Editeur.pl ?}
+	[PGRAPHE]:
+	{
+		"Editeur.pl" est un script qui vous permet de générer à partir d'un 
+		fichier ".pof" un document appelé "rapport.odt". Le script prend en  
+		entrée un fichier contenu (.pof) et un fichier style (.sty). Ensuite,  
+		il applique à votre contenu votre style. Nous verrons un peu plus loin 
+		dans ce document comment éditer un fichier "pof".
+	}
+	[PGRAPHE]:
+	{
+		Voici la commande à exécuter pour générer votre document:
+	}
+	[CODE]:
+	{
+		_NL_
+		~ perl editeur.pl mon_document.pof mon_style.sty
+		_NL_
+	}
+	[PGRAPHE]:
+	{
+		Voici la commande pour formater un texte de façon à ce qu'il soit
+		 compatible avec  l'éditeur. Il est très utile lorsque vous utilisez 
+		 l'élément \[CODE\].
+	}
+	[CODE]:
+	{
+		_NL_
+		~ perl editeur.pl -f texte_a_formater.txt
+		_NL_
+	}
+	[PGRAPHE]:
+	{
+		Pof utilise le module OODoc de la librairie openOffice-ooDoc. 
+		Avant de l'utiliser il faudra s'assurer que ce dernier est bien installé. 
+		Sous Linux, il suffit d'installer le paquet libopenoffice-oodoc-perl 
+		via la commande:
+	}
+	[CODE]:
+	{
+		_NL_
+		~ sudo apt-get install libopenoffice-oodoc-perl
+		_NL_
+	}
+_NP_
+[TITRE1]:{L'API openoffice-oodoc}
+	[PGRAPHE]:
+	{
+		Grand merci à la librairie OpenOffice-OODoc de Jean-Marie Gouarné car POF se base entièrement sur elle.
+	}
+_NP_
+[TITRE1]:{Editer votre premier document}
+	[PGRAPHE]:
+	{
+		Pof classifie un document comme étant un ensemble de :
+	}
+	[LISTE]:
+	{
+		_TAB(2)=> Titre à plusieurs niveaux,
+		_TAB(2)=> Image,
+		_TAB(2)=> Tableau,
+		_TAB(2)=> Paragraphe,
+		_TAB(2)=> Liste,
+		_TAB(2)=> Code,
+		_TAB(2)=> Entête,
+		_TAB(2)=> Pied
+	}
+	
+	[TITRE3]:{Titre à plusieurs niveaux}
+		[PGRAPHE]:
+		{
+			Il existe 3 niveaux hiérarchiques de titre dans Pof. Leurs sytles 
+			sont normalement différents. Pour les utiliser, il suffit de faire 
+			comme suit:
+		}
+		[CODE]:
+		{
+			_NL_
+			\[TITRE1\]:\{ MON TITRE DE NIVEAU 1 \}_NL_
+			\[TITRE2\]:\{ MON TITRE DE NIVEAU 2 \}_NL_
+			\[TITRE3\]:\{ MON TITRE DE NIVEAU 3 \}
+			_NL_
+		}
+	[TITRE3]:{Tableau}
+		[PGRAPHE]:
+		{
+			La manipulation de tableau est très simple, chaque ligne contient 
+			plusieurs colonnes séparées par des virgules. Chaque ligne est 
+			définie dans un bloc d'accolade \{ \} et est séparée aussi 
+			par des virgules.
+		}
+		[CODE]:
+		{
+			_NL_
+			\[TABLEAU\]:_NL_
+			\{_NL_
+				\{Exemple1,Exemple2\},_NL_
+				\{Exemple3,Exemple4\},_NL_
+				\{Exemple5,Exemple6\}_NL_
+			\}
+			_NL_
+		}
+		_NP_
+		[PGRAPHE]:
+		{
+			Voici ce que nous obtenons finalement:
+		}
+		[TABLEAU]:
+		{
+			{Exemple1,Exemple2},
+			{Exemple3,Exemple4},
+			{Exemple5,Exemple6}
+		}
+	[TITRE3]:{Image}
+		[PGRAPHE]:
+		{
+			Pour insérer une image dans votre document,il suffit de lui 
+			spécifier la taille , la description, et le nom du fichier 
+			image.
+		}
+		[CODE]:
+		{
+			_NL_
+			\[IMAGE\]:_NL_
+			\{_NL_
+				largeur,hauteur,_NL_
+				description,_NL_
+				fichier image_NL_
+			\}
+			_NL_
+		}	
+	[TITRE3]:{Paragraphe}
+		[PGRAPHE]:
+		{
+			C'est l'élément le plus utilisé car il vous permet d'écrire 
+			votre texte.
+		}
+		[CODE]:
+		{
+			_NL_
+			\[PGRAPHE\]:_NL_
+			\{_NL_
+				Pof est un script Perl de génération de document_NL_ 
+				OpenOffice à partir d'un mini langage.
+				_NL_
+			\}
+			_NL_
+		}
+	[TITRE3]:{Liste}
+		[CODE]:
+		{
+			_NL_
+			\[LISTE\]:_NL_
+			\{_NL_
+				+ Titre à plusieurs niveaux,_NL_
+				+ Image,_NL_
+				+ Tableau,_NL_
+				+ Paragraphe,_NL_
+				+ Liste,_NL_
+				+ ..._NL_
+			\}
+			_NL_
+		}
+	[TITRE3]:{Entête et pied de page}
+		[PGRAPHE]:
+		{
+			\[ENTETE\] et \[PIED\] spécifie respectivement les en-tête 
+			et pied de page de votre document.
+		}
+		[CODE]:
+		{
+			_NL_
+			\[ENTETE\]:\{GENERATEUR DE DOCUMENT ODT\}_NL_
+			\[PIED\]:\{Rija ZAFIAMY - 2015\}
+			_NL_
+		}
+	[TITRE3]:{Bloc de code}
+		[PGRAPHE]:
+		{
+			Un bloc de code est une extension de \[PGRAPHE\]. Contrairement  
+			à un paragraphe, il prend en compte les tabulations. Il est 
+			très pratique pour les codes sources, les lignes de commandes, 
+			... 
+		}
+		[CODE]:
+		{
+			_NL_
+			\[ENTETE\]:\{GENERATEUR DE DOCUMENT ODT\}_NL_
+			\[PIED\]:\{Rija ZAFIAMY - 2015\}
+			_NL_
+		}
+	[TITRE3]:{Les mots clés magiques}
+		[PGRAPHE]:
+		{
+			Il est parfois utile d'échapper des caractères réserves par 
+			pof comme le \[ ou le \{. Pour cela, il suffit de les précéder 
+			par un anti slash \\.
+			_NL__NL_
+			Au debut et à la fin d'un document pof, il faut toujours indiquer 
+			_DEBUT _ et _FIN _.
+			_NL__NL_
+			_TAB\(N\) indique qu'à cette position, il faudra insérer N tabulation.
+			_NL__NL_
+			_NL _ indique qu'à cette position, il faudra insérer un saut à la ligne.
+		}
+_NP_
+	[TITRE3]:{Exemple de document pof}
+	[PGRAPHE]:
+	{
+		Voici un exemple simple qui vous permet de créer un titre et un 
+		paragraphe.
+	}
+	[CODE]:
+	{
+		_ DEBUT__NL_
+		\[TITRE1\]:\{Exemple de document Pof\}_NL_
+			\[PGRAPHE\]:_NL_
+			\{_NL_
+				Bonjour le monde ! Voici mon premier paragraphe._NL_
+			\}_NL_
+		_ FIN__NL_
+	}
+	[PGRAPHE]:
+	{
+		Voici ce que vous devriez avoir comme résultat:
+	}
+	[IMAGE]:{15,5,Aperçu du document généré,apercu.png}
+	
+	_NP_
+	[TITRE3]:{Exemple de fichier Style}
+	[PGRAPHE]:
+	{
+		Ci-après, est le style associé à ce document. Chaque élément de 
+		de notre contenu a un style d'où StyleTitre1 est associé au TITRE1,
+		StyleParagraphe pour PGRAPHE,.... Et chaque section est composé 
+		de 3 blocs dont le premier correspond à la famille du paragraphe 
+		(graphic,table,paragraph) , le second au style du paragraphe et 
+		le dernier au style de la zone de texte.
+	}
+	[CODE]:
+	{
+	\[StyleTitre1\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{	'fo:text-align':'left',_NL_
+			'fo:margin-bottom':'0.30cm'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-family':'NanumGothic',_NL_
+			'fo:font-size':'17pt',_NL_
+			'fo:font-weight':'bold',_NL_
+			'fo:color':"#084B8A",_NL_
+			'style:text-underline-style':'solid',_NL_
+			'style:text-underline-color':'#084B8A'_NL_
+		\}_NL_
+	\}_NL_
+	_NL_
+	\[StyleTitre2\]	_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{	'fo:margin-left':'0.20cm',_NL_
+			'fo:margin-bottom':'0.20cm',_NL_
+			'fo:text-align':'left'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-family':'NanumGothic',_NL_
+			'fo:font-size':'14pt',_NL_
+			'fo:font-weight':'bold',_NL_
+			'fo:color':"#999999"_NL_
+		\}_NL_
+	\}_NL_
+	\[StyleTitre3\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{	'fo:margin-left':'0.40cm',_NL_
+			'fo:margin-bottom':'0.20cm',_NL_
+			'fo:text-align':'left'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-family':'NanumGothic',_NL_
+			'fo:font-size':'12pt',_NL_
+			'fo:font-weight':'bold'		_NL_
+		\}_NL_
+	\}_NL_
+	\[StyleParagraphe\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{	'fo:margin-left':'0.50cm',_NL_
+			'fo:text-align':'justify'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-family':'NanumGothic',_NL_
+			'fo:font-size':'12pt'	_NL_
+		\}_NL_
+	\}_NL_
+	\[StyleCode\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{_NL_
+			'fo:text-align':'left',_NL_
+			'fo:background-color':"#EFFBFB",_NL_
+			'fo:margin-bottom':'0.10cm',_NL_
+			'fo:margin-left':'0.50cm'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'Courier 10 Pitch',_NL_
+			'fo:font-family':'Courier 10 Pitch',_NL_
+			'fo:font-size':'10pt'	_NL_
+		\}_NL_
+	\}_NL_
+	_NL_
+	\[StyleEntete\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{	'fo:margin-right':'0.50cm',_NL_
+			'fo:text-align':'right',_NL_
+			'style:border-line-width-bottom':'0.0008in 0.0138in 0.0008in',_NL_
+			'fo:border-bottom':'0.06pt double #084B8A'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-family':'NanumGothic',_NL_
+			'fo:font-size':'13pt',_NL_
+			'fo:font-weight':'bold',_NL_
+			'fo:color':"#084B8A"_NL_
+		\}_NL_
+	\}_NL_
+	_NL_
+	\[StylePied\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{_NL_
+			'fo:text-align':'left',_NL_
+			'fo:margin-left':'0.20cm',_NL_
+			'style:border-line-width-top':'0.0008in 0.0138in 0.0008in',_NL_
+			'fo:border-top':'0.03pt double #084B8A'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-family':'NanumGothic',_NL_
+			'fo:font-size':'11pt',_NL_
+			'fo:font-weight':'bold',_NL_
+			'fo:color':"#084B8A"_NL_
+		\}_NL_
+	\}_NL_
+	_NL_
+	\[StyleImage\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{	'fo:margin-left':'0.40cm',_NL_
+			'fo:text-align':'center'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-size':'12pt'	_NL_
+		\}_NL_
+	\}_NL_
+	\[StyleTableau\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{	'fo:margin-left':'0.40cm',_NL_
+			'fo:text-align':'justify'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-size':'12pt'	_NL_
+		\}_NL_
+	\}_NL_
+	\[StyleListe\]_NL_
+	\{_NL_
+		\{_NL_
+			'family':'paragraph',_NL_
+			'parent':'Text Body'_NL_
+		\},_NL_
+		\{	'fo:margin-left':'0.10cm',_NL_
+			'fo:margin-bottom':'0.30cm',_NL_
+			'fo:text-align':'left'_NL_
+		\},_NL_
+		\{_NL_
+			'area':'text',_NL_
+			'style:font-name':'NanumGothic',_NL_
+			'fo:font-family':'NanumGothic',_NL_
+			'fo:font-size':'10pt'	_NL_
+		\}_NL_
+	\}_NL_
+
+	}
+_NP_
+[TITRE1]:{Conclusion}
+	[PGRAPHE]:
+	{
+		PofEditor est un outil de traitement de texte de base, elle n'est 
+		pas comparable aux  outils comme latex, Microsoft word, libre Office, 
+		Open office,... C'est normal car il n'a pas été conçu pour cela. Son 
+		plus grand avantage réside sur sa simplicité et son efficacité. 
+		 
+	}
+	[PGRAPHE]:
+	{
+		Un des avantages de Pof est la séparation du contenu et du style,  
+		cela rend votre document entièrement personnalisable. Vous passerez 
+		peut-être beaucoup de temps à créer votre propre fichier style, 
+		mais au  moins c'est fait une fois pour toutes. Ainsi, vous pourriez 
+		mieux vous concentrer sur le contenu sans se soucier de la mise en 
+		forme.
+	}
+		[PGRAPHE]:
+	{
+		Pof est en perpétuelle évolution et dépend fortement de la participation de l'utilisateur pour l'améliorer. 
+		La partie gestion de style n'est pas encore satisfaisante à cause de sa complexité. Néanmoins à l'état actuel 
+		Pof offre déjà l'essentiel d'un traitement de texte.
+	}
+_NP_
+[TITRE1]:{Bibliographie et Webographie}
+	[LISTE]:
+	{
+		=> The text processing submodule of OpenOffice::OODoc _NL_
+		 http://cjovet.free.fr/util/perl/perl.enstimac.fr/perl5.8.5/site_perl/5.8.5/OpenOffice/OODoc/Text.html,
+		=> CPAN (The Comprehensive Perl Archive Network) _NL_
+		 http://search.cpan.org/~jmgdoc/OpenOffice-OODoc/,
+		=> Guide de prise en main Openoffice::OOdoc_NL_
+		 Jean-Marie Gouamé 2006
+	}
+_FIN_
