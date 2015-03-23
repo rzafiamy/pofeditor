@@ -13,12 +13,18 @@ use OpenOffice::OODoc;
 #________________________________________________
 my $countTab = 0;
 my $countImg = 0;
+
+my @titre1 = ("I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII");
+my @titre3 = ("a","b","c","d","e","f","g","h","i","j","k","l");
+
+my ($t1,$t2,$t3) = (0,1,0);
+
 my @contenu;
 
 # creation d'un fichier
 my $fichier = ooDocument
 (
-	file 	=> 'rapport.odt',
+	file 	=> $ARGV[0].".odt",
 	create 	=> 'text',
 	member	=> 'content'
 );
@@ -27,7 +33,7 @@ $fichier->save;
 
 
 # Ouverture du fichier
-my $archive 	= ooFile('rapport.odt');
+my $archive 	= ooFile($ARGV[0].".odt");
 
 # instance objet Meta
 my $meta 		= ooMeta
@@ -75,6 +81,25 @@ sub creer_titre
 {
 	my ($niveau,$titre) = @_;
 	$titre =~ s/_TAB_/\t/g;
+	
+	if(1==$niveau)
+	{
+		$t2 = 1;
+		$t3 = 0;
+		$titre = $titre1[$t1]."- ".$titre;
+		$t1++;
+	}
+	elsif(2==$niveau)
+	{
+		$t3 = 0;
+		$titre = $t2.". ".$titre;
+		$t2++;
+	}
+	else
+	{
+		$titre = $titre3[$t3].") ".$titre;
+		$t3++;
+	}
 	$texte->appendParagraph
 	(
 	 	style => 'StyleTitre'.$niveau,
@@ -219,7 +244,11 @@ sub creer_code
 	$code =~ s/_DIESE_/#/g;
 	my @lignes = split("_NL_",$code);
 	
-
+	$texte->appendParagraph
+	(
+		style 	=> 'StyleCode',
+		text  	=> ""
+	);
 	foreach my $c (@lignes)
 	{
 		$texte->appendParagraph
@@ -229,7 +258,11 @@ sub creer_code
 		);
 		push(@contenu,$c);
 	}
-	
+	$texte->appendParagraph
+	(
+		style 	=> 'StyleCode',
+		text  	=> ""
+	);
 	my $ret;
 		
 	$ret = $texte->appendParagraph
