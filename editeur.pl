@@ -161,11 +161,12 @@ sub creer_liste
 		
 		foreach my $item (@items)
 		{
-			$texte->appendParagraph
+			$parag = $texte->appendParagraph
 			(
 				style => 'StyleListe',
 				text  => $item
 			);
+			ajouter_hypertexte($parag,$item);
 			push(@contenu,$item);
 		}
 	}
@@ -212,12 +213,13 @@ sub creer_paragraphe
 
 	foreach my $p (@parag)
 	{
-		$texte->appendParagraph
+		$parag = $texte->appendParagraph
 		(
 			style 	=> 'StyleParagraphe',
 			text  	=> $p
 		);
 		push(@contenu,$p);
+		ajouter_hypertexte($parag,$p);
 	}
 	
 	my $ret;
@@ -361,6 +363,30 @@ sub ajouter_tabulation
 }
 #_________________________________________
 #
+# Creer des liens hypertextes
+#_________________________________________
+sub ajouter_hypertexte
+{
+
+	my ($p,$t) = @_;
+	
+	my $tmp = $t;
+	
+	while($tmp ne "")
+	{	
+		if($tmp=~ /[\s]*(http[\S]+[^.,:\s]).*/){
+			$texte->setHyperlink($p,$1,$1);
+			$tmp = $';
+		}
+		else
+		{
+			$tmp = "";
+		}
+		
+	}
+}
+#_________________________________________
+#
 # Automate qui gère les entrees
 # Est-ce :
 # 	- un titre ?
@@ -399,6 +425,7 @@ sub automate
 		
 		while($ligne = <FICHIER>)
 		{
+			$ligne =~ s/^%%.+//g; #supprime les commentaires
 			chomp($ligne);
 			$raw = $raw.$ligne;
 		}
