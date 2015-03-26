@@ -240,7 +240,9 @@ _NP_
 			_NL__NL_
 			_TAB\(N\) indique qu'à cette position, il faudra insérer N tabulation.
 			_NL__NL_
-			_NL _ indique qu'à cette position, il faudra insérer un saut à la ligne.
+			_NL _ indique qu'à cette position, il faudra insérer un saut à 
+			la ligne._NL_NL_
+			\%\% Indique un commentaire
 		}
 _NP_
 	[TITRE3]:{Exemple de document pof}

@@ -14,8 +14,11 @@ use OpenOffice::OODoc;
 my $countTab = 0;
 my $countImg = 0;
 
-my @titre1 = ("I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII");
-my @titre3 = ("a","b","c","d","e","f","g","h","i","j","k","l");
+my @titre1 = ("I","II","III","IV","V","VI","VII","VIII","IX","X","XI",
+				"XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX",
+				"XX","XXI","XXII","XXIII","XXIV","XXV","XXVI");
+my @titre3 = ("a","b","c","d","e","f","g","h","i","j","k","l","m","n",
+				"o","p","q","r","s","t","u","v","w","y","z");
 
 my ($t1,$t2,$t3) = (0,1,0);
 
@@ -127,7 +130,15 @@ sub creer_tableau
 		foreach my $col (@$li)
 		{
 			$col =~ s/_TAB_//g;
-			$texte->cellValue($feuille, $i,$j,$col);
+			$cell = $texte->getTableCell($feuille,$i,$j);
+			
+			$texte->appendParagraph
+				(
+					text => $col,
+					style => "StyleTableau",
+					attachment => $cell
+				);
+				
 			push(@contenu,$col);
 			$j++;
 		}
