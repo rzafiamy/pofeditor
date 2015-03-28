@@ -8,74 +8,125 @@
 
 use OpenOffice::OODoc;
 
+if((not defined $ARGV[0]) &&(not defined $ARGV[1] ))
+{
+	print "Syntax error : $0 <-f|model> <text_to_format|style>\n";
+	exit 1;
+}
+
 #________________________________________________
 # Variables globales
 #________________________________________________
-my $countTab = 0;
-my $countImg = 0;
-
-my @titre1 = ("I","II","III","IV","V","VI","VII","VIII","IX","X","XI",
-				"XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX",
-				"XX","XXI","XXII","XXIII","XXIV","XXV","XXVI");
-my @titre3 = ("a","b","c","d","e","f","g","h","i","j","k","l","m","n",
-				"o","p","q","r","s","t","u","v","w","y","z");
-
-my ($t1,$t2,$t3) = (0,1,0);
-
 my @contenu;
+my @titre1;
+my @titre3;
+my $t1;
+my $t2;
+my $t3;
+my $meta;
+my $texte;
+my $deco;
+my $master;
+my $layout;
+my $archive;
+my $countTab;
+my $countImg;
 
-# creation d'un fichier
-my $fichier = ooDocument
-(
-	file 	=> $ARGV[0].".odt",
-	create 	=> 'text',
-	member	=> 'content'
-);
+if($ARGV[0] eq "-f")
+{
+	formater($ARGV[1]);
+}
+else
+{
+	($t1,$t2,$t3,$countTab,$countImg)	= (0,1,0,0,0);
+	
+	@titre1		= ("I","II","III","IV","V","VI","VII","VIII",
+					"IX","X","XI","XII","XIII","XIV","XV",
+					"XVI","XVII","XVIII","XIX","XX","XXI",
+					"XXII","XXIII","XXIV","XXV","XXVI");
 
-$fichier->save;
-
-
-# Ouverture du fichier
-my $archive 	= ooFile($ARGV[0].".odt");
-
-# instance objet Meta
-my $meta 		= ooMeta
-(
-	archive => $archive 
-);
-# instance objet Document pour content
-my $texte 		= ooDocument
-(
-	archive => $archive,
-	member 	=> 'content'
-);
-# instance objet Document pour les styles
-my $deco = ooDocument
-(
-	archive => $archive,
-	member 	=> 'styles'
-);
-# definit le titre du document
-$meta->title('Rapport');
+	@titre3		= ("a","b","c","d","e","f","g","h","i","j","k",
+					"l","m","n","o","p","q","r","s","t","u","v",
+					"w","y","z");
+				
+	# 1) Creee un document odt vide
+	$archive 							= creerDoc($ARGV[0]);
+	
+	# 2) Initialise l'objet oodoc
+	($meta,$texte,$deco) 				= initDoc($archive);
+	
+	# 3) Definit le titre du document
+	$meta->title('Rapport');
+	
+	# 4) Creee un style de page
+	$layout = $deco->pageLayout("Standard");
+	$master = $deco->createMasterPage("StylePages",layout=>$layout);
+	
+	# 5) Creee tous les styles du document a partir de style.sty
+	creer_styles($ARGV[1]);
+	
+	# 6) Effectue un pre-traitement sur le fichier
+	my $raw = preprocesseur($ARGV[0]);
+	
+	# 7) Traite le document POF
+	automate($raw);
+	
+	# 8) Met a jour le fichier ODT
+	$archive->save;
+}
 
 # --------------------------------------
-# Creation de style de page
+# Creation d'un document ODT vide
 #---------------------------------------
-my $layout = $deco->pageLayout("Standard");
-my $master = $deco->createMasterPage("StylePages",layout=>$layout);
-                	
-creer_style($ARGV[1]);
-
-automate($ARGV[0]);
-
-$archive->save;
-
-#foreach my $e (@contenu)
-#{
+sub creerDoc
+{
+	my ($nom_fichier) = @_;
 	
-	#print $e."\n";
-	#$l = <STDIN>;
-#}
+	my $doc = ooDocument
+	(
+		file 	=> $nom_fichier.".odt",
+		create 	=> 'text',
+		member	=> 'content'
+	);
+
+	$doc->save;
+	
+	my $archive 	= ooFile($nom_fichier.".odt");
+	
+	return $archive;
+}
+# --------------------------------------
+# Instance objet ODoc
+# return:
+#	- meta
+#	- texte
+#	- deco
+#---------------------------------------
+sub initDoc
+{
+	my ($fic) = @_;
+
+	# instance objet Meta
+	my $meta 		= ooMeta
+	(
+		archive => $fic
+	);
+	# instance objet Document pour content
+	my $texte 		= ooDocument
+	(
+		archive => $fic,
+		member 	=> 'content'
+	);
+	# instance objet Document pour les styles
+	my $deco = ooDocument
+	(
+		archive => $fic,
+		member 	=> 'styles'
+	);
+	
+	return ($meta,$texte,$deco);
+}
+
 #_________________________________________
 #
 # Insere un titre de niveau 1-3 dans le document
@@ -397,6 +448,78 @@ sub ajouter_hypertexte
 	}
 }
 #_________________________________________
+# Formate un document au format POF et 
+# l'affiche a la sortie standard.
+#_________________________________________
+sub formater
+{
+	my ($nom_fichier) = @_;
+	
+	open(FICHIER ,"<".$nom_fichier) 
+	or 
+	die("Ereur ouverture fichier $nom_fichier");
+	
+	while($ligne = <FICHIER>)
+	{
+		$ligne =~ s/\n/_NL_\n/g;
+		$ligne =~ s/\[/\\\[/g;
+		$ligne =~ s/\]/\\\]/g;
+		$ligne =~ s/\{/\\\{/g;
+		$ligne =~ s/\}/\\\}/g;
+		
+		print $ligne;
+	}
+	
+	close(FICHIER);
+}
+#_________________________________________
+# Effectue un pre-traitement sur le 
+# fichier source avant de le convertir
+# en fichier ODT.
+#_________________________________________
+sub preprocesseur
+{
+	my($fichier) = @_;
+	
+	my $raw = "";
+	
+	open(FICHIER ,"<".$fichier) or die("Ereur ouverture fichier modele");
+	
+	while($ligne = <FICHIER>)
+	{
+		$ligne =~ s/^%%.+//g; #supprime les commentaires
+		chomp($ligne);
+		$raw = $raw.$ligne;
+	}
+	
+	close(FICHIER);	
+	
+	$raw =~ s/#/_DIESE_/g;
+	$raw =~ s/\t/_TAB_/g;
+	$raw =~ s/(_TAB_)+\[/\[/g;# _TAB_[
+	$raw =~ s/\](_TAB_)+/\]/g;# ]_TAB_
+	
+	$raw =~ s/(_TAB_)+\{/\{/g; # _TAB_{
+	$raw =~ s/\}(_TAB_)+/\}/g; # }_TAB_
+	
+	$raw =~ s/([\s])[\s]{1,}/$1/g;
+	
+	$raw =~ s/([^\\]{1})([\{,])\{/$1$2:LLIGNE:/g; # forme {{ ou ,{
+	$raw =~ s/([^\\]{1})\}([\},])/$1:RLIGNE:$2/g; # forme }, ou }}  
+	
+	$raw =~ s/([^\\]{1})\[/$1#LTAG#/g; #forme [
+	$raw =~ s/([^\\]{1})\]:/$1#RTAG#:/g; #forme ]:
+	
+	$raw =~ s/:\{/#LBLOC#/g;
+	$raw =~ s/([^\\]{1})\}/$1#RBLOC#/g;
+	
+	$raw =~ s/\\(.)/$1/g; # caracteres echappes
+	$raw =~ s/_DEBUT_//g; # caracteres echappes
+	$raw =~ s/_FIN_/$1/g; # caracteres echappes
+	
+	return $raw;
+}
+#_________________________________________
 #
 # Automate qui gère les entrees
 # Est-ce :
@@ -409,139 +532,83 @@ sub ajouter_hypertexte
 sub automate
 {
 	
-	my ($filename) = @_;
-	
-	if($filename eq "-f")
+	my ($raw) = @_;
+
+	while($raw ne "")
 	{
-		open(FICHIER ,"<".$ARGV[1]) or die("Ereur ouverture fichier");
 		
-		$raw = "";
-		
-		while($ligne = <FICHIER>)
+		if($raw =~ /^#LTAG#TITRE([1-3])#RTAG##LBLOC#([^#]*)#RBLOC#/)
 		{
-			$ligne =~ s/\n/_NL_\n/g;
-			$ligne =~ s/\[/\\\[/g;
-			$ligne =~ s/\]/\\\]/g;
-			$ligne =~ s/\{/\\\{/g;
-			$ligne =~ s/\}/\\\}/g;
-			print $ligne;
+			creer_titre($1,$2);
+			$raw = $`.$';
 		}
-		close(FICHIER);
-	}
-	else
-	{
-		open(FICHIER ,"<".$filename) or die("Ereur ouverture fichier modele");
-		
-		$raw = "";
-		
-		while($ligne = <FICHIER>)
+		elsif($raw =~ /^#LTAG#CODE#RTAG##LBLOC#([^#]*)#RBLOC#/)
 		{
-			$ligne =~ s/^%%.+//g; #supprime les commentaires
-			chomp($ligne);
-			$raw = $raw.$ligne;
+			creer_code($1);
+			$raw = $`.$';
+		}		
+		elsif($raw =~ /^#LTAG#ENTETE#RTAG##LBLOC#([^#]*)#RBLOC#/)
+		{
+			creer_EntetePage($1);
+			$raw = $`.$';
+			
 		}
-		
-		close(FICHIER);	
-		
-		#pre-traitement
-		$raw =~ s/#/_DIESE_/g;
-		$raw =~ s/\t/_TAB_/g;
-		$raw =~ s/(_TAB_)+\[/\[/g;# _TAB_[
-		$raw =~ s/\](_TAB_)+/\]/g;# ]_TAB_
-		
-		$raw =~ s/(_TAB_)+\{/\{/g; # _TAB_{
-		$raw =~ s/\}(_TAB_)+/\}/g; # }_TAB_
-		
-		$raw =~ s/([\s])[\s]{1,}/$1/g;
-		
-		$raw =~ s/([^\\]{1})([\{,])\{/$1$2:LLIGNE:/g; # forme {{ ou ,{
-		$raw =~ s/([^\\]{1})\}([\},])/$1:RLIGNE:$2/g; # forme }, ou }}  
-		
-		$raw =~ s/([^\\]{1})\[/$1#LTAG#/g; #forme [
-		$raw =~ s/([^\\]{1})\]:/$1#RTAG#:/g; #forme ]:
-		
-		$raw =~ s/:\{/#LBLOC#/g;
-		$raw =~ s/([^\\]{1})\}/$1#RBLOC#/g;
-		
-		$raw =~ s/\\(.)/$1/g; # caracteres echappes
-		$raw =~ s/_DEBUT_//g; # caracteres echappes
-		$raw =~ s/_FIN_/$1/g; # caracteres echappes
-		
-		while($raw ne "")
+		elsif($raw =~ /^#LTAG#PIED#RTAG##LBLOC#([^#]*)#RBLOC#/)
 		{
-			if($raw =~ /^#LTAG#TITRE([1-3])#RTAG##LBLOC#([^#]*)#RBLOC#/)
+			creer_PiedPage($1);
+			$raw = $`.$';
+			
+		}			
+		elsif($raw =~ /^#LTAG#PGRAPHE#RTAG##LBLOC#([^#]*)#RBLOC#/)
+		{
+			creer_paragraphe($1);
+			$raw = $`.$';
+		}
+		elsif($raw =~ /^#LTAG#LISTE#RTAG##LBLOC#([^#]*)#RBLOC#/)
+		{
+			my @liste = split(",",$1);
+			creer_liste(@liste);
+			
+			$raw = $`.$';
+			
+		}	
+		elsif($raw =~ /^#LTAG#IMAGE#RTAG##LBLOC#([0-9]+[\.]?[0-9]*,[0-9]+[\.]?[0-9]*,[^,]+,[^#]+)#RBLOC#/)
+		{
+			creer_image($1);
+			$raw = $`.$';
+		}		
+		elsif($raw =~ /^#LTAG#TABLEAU#RTAG##LBLOC#([^#]*)#RBLOC#/)
+		{
+			my @ligne= split(":RLIGNE:,",$1);
+			my @table;
+			my $l = 0;
+			my $c = 0;
+			
+			foreach my $el (@ligne)
 			{
-				creer_titre($1,$2);
-				$raw = $`.$';
+				my @col;
+				$el =~ s/:LLIGNE://g;
+				$el =~ s/:RLIGNE://g;
+				@col = split(",",$el);
+				$table[$l]= \@col;
+				$c = $#col + 1;
+				$l++;
 			}
-			elsif($raw =~ /^#LTAG#CODE#RTAG##LBLOC#([^#]*)#RBLOC#/)
+			if(($c > 0) && ($l > 0))
 			{
-				creer_code($1);
-				$raw = $`.$';
-			}		
-			elsif($raw =~ /^#LTAG#ENTETE#RTAG##LBLOC#([^#]*)#RBLOC#/)
-			{
-				creer_EntetePage($1);
-				$raw = $`.$';
-				
+				creer_tableau($l,$c,@table);
 			}
-			elsif($raw =~ /^#LTAG#PIED#RTAG##LBLOC#([^#]*)#RBLOC#/)
-			{
-				creer_PiedPage($1);
-				$raw = $`.$';
-				
-			}			
-			elsif($raw =~ /^#LTAG#PGRAPHE#RTAG##LBLOC#([^#]*)#RBLOC#/)
-			{
-				creer_paragraphe($1);
-				$raw = $`.$';
-			}
-			elsif($raw =~ /^#LTAG#LISTE#RTAG##LBLOC#([^#]*)#RBLOC#/)
-			{
-				my @liste = split(",",$1);
-				creer_liste(@liste);
-				
-				$raw = $`.$';
-				
-			}	
-			elsif($raw =~ /^#LTAG#IMAGE#RTAG##LBLOC#([0-9]+[\.]?[0-9]*,[0-9]+[\.]?[0-9]*,[^,]+,[^#]+)#RBLOC#/)
-			{
-				creer_image($1);
-				$raw = $`.$';
-			}		
-			elsif($raw =~ /^#LTAG#TABLEAU#RTAG##LBLOC#([^#]*)#RBLOC#/)
-			{
-				my @ligne= split(":RLIGNE:,",$1);
-				my @table;
-				my $l = 0;
-				my $c = 0;
-				
-				foreach my $el (@ligne)
-				{
-					my @col;
-					$el =~ s/:LLIGNE://g;
-					$el =~ s/:RLIGNE://g;
-					@col = split(",",$el);
-					$table[$l]= \@col;
-					$c = $#col + 1;
-					$l++;
-				}
-				if(($c > 0) && ($l > 0))
-				{
-					creer_tableau($l,$c,@table);
-				}
-				$raw = $`.$';
-			}
-			elsif($raw =~ /_NP_/)
-			{
-				creer_saut_page("");
-				$raw = $';
-			}	
-			else{
-				print "Bad format\n";
-				print "^^^^^".$raw."\n";
-				$raw = "";
-			}
+			$raw = $`.$';
+		}
+		elsif($raw =~ /_NP_/)
+		{
+			creer_saut_page("");
+			$raw = $';
+		}	
+		else{
+			print "Bad format\n";
+			print "^^^^^".$raw."\n";
+			$raw = "";
 		}
 	}
 }
@@ -552,13 +619,13 @@ sub automate
 # Creer les styles du documents a partir
 # du fichier style
 #_________________________________________
-sub creer_style
+sub creer_styles
 {
 	my ($filename) = @_;
 	
 	open(FICHIER ,"<".$filename) or die("Ereur ouverture fichier style");
 	
-	$raw = "";
+	my $raw = "";
 	
 	while($ligne = <FICHIER>)
 	{
