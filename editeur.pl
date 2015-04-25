@@ -49,7 +49,7 @@ else
 					"l","m","n","o","p","q","r","s","t","u","v",
 					"w","y","z");
 				
-	# 1) Creee un document odt vide
+	# 1) Creee un document ODT vide
 	$archive 							= creerDoc($ARGV[0]);
 	
 	# 2) Initialise l'objet oodoc
@@ -168,7 +168,7 @@ sub creer_titre
 sub creer_tableau
 {
 	
-	my ($l,$c,@tab) = @_;
+	my ($tabtitle,$l,$c,@tab) = @_;
 		
 	my $feuille = $texte->appendTable('Table'.$countTab, $l, $c);
 
@@ -196,13 +196,13 @@ sub creer_tableau
 		$i++;
 	}
 	
+	$countTab++;
+	
 	$texte->appendParagraph
 	(
-	 	style 	=> 'StyleParagraphe',
-		text  	=> ""
+	 	style 	=> 'StyleLegende',
+		text  	=> 'Table '.$countTab."  : ".$tabtitle
 	);
-	
-	$countTab++;
 }
 
 #_________________________________________
@@ -244,18 +244,28 @@ sub creer_image
 	my ($img) = @_;
 	
 	my @param = split(",",$img);
-	my $p = creer_paragraphe("");
-		
-	$texte->createImageElement
+	
+	
+	my $fig = $countImg + 1;
+	
+	my $p = $texte->appendParagraph
+	(
+	 	style 	=> 'StyleLegende',
+		text  	=> "Figure ".$fig.": ".$param[2]
+	);
+	
+	$texte->insertImageElement
                 (
 					"Image".$countImg,
 					title    => $param[2],
 					description     => $param[2],
-					attachment      => $p,
+					after      	=> $p,
+					legend => $p,
 					import          => $param[3],
 					size 			=> $param[0]." cm,".$param[1]." cm",
 					style			=> "StyleImage"
                 );
+	
 	$countImg++;
 }
 
@@ -487,9 +497,11 @@ sub preprocesseur
 	
 	while($ligne = <FICHIER>)
 	{
-		$ligne =~ s/^%%.+//g; #supprime les commentaires
+		$ligne =~ s/^%%.*//g; #supprime les commentaires
+		$ligne =~ s/[\t\n\0\r]*$//g; #supprime les caractères de saut en fin de ligne
 		chomp($ligne);
 		$raw = $raw.$ligne;
+		
 	}
 	
 	close(FICHIER);	
@@ -510,7 +522,7 @@ sub preprocesseur
 	$raw =~ s/([^\\]{1})\[/$1#LTAG#/g; #forme [
 	$raw =~ s/([^\\]{1})\]:/$1#RTAG#:/g; #forme ]:
 	
-	$raw =~ s/:\{/#LBLOC#/g;
+	$raw =~ s/:[\s]*\{/#LBLOC#/g;
 	$raw =~ s/([^\\]{1})\}/$1#RBLOC#/g;
 	
 	$raw =~ s/\\(.)/$1/g; # caracteres echappes
@@ -533,10 +545,10 @@ sub automate
 {
 	
 	my ($raw) = @_;
-
+	
+	
 	while($raw ne "")
-	{
-		
+	{	
 		if($raw =~ /^#LTAG#TITRE([1-3])#RTAG##LBLOC#([^#]*)#RBLOC#/)
 		{
 			creer_titre($1,$2);
@@ -584,19 +596,33 @@ sub automate
 			my $l = 0;
 			my $c = 0;
 			
+			my $isTitle = 1;
+			my $tabTitle = "";
+			
 			foreach my $el (@ligne)
 			{
 				my @col;
 				$el =~ s/:LLIGNE://g;
 				$el =~ s/:RLIGNE://g;
+				
 				@col = split(",",$el);
-				$table[$l]= \@col;
-				$c = $#col + 1;
-				$l++;
+				
+				if($isTitle)
+				{
+					$tabTitle = $el;
+					$isTitle = 0;
+				
+				}
+				else
+				{
+					$table[$l]= \@col;
+					$c = $#col + 1;
+					$l++;
+				}
 			}
 			if(($c > 0) && ($l > 0))
 			{
-				creer_tableau($l,$c,@table);
+				creer_tableau($tabTitle,$l,$c,@table);
 			}
 			$raw = $`.$';
 		}
