@@ -63,7 +63,7 @@ else
 	$master = $deco->createMasterPage("StylePages",layout=>$layout);
 	
 	# 5) Creee tous les styles du document a partir de style.sty
-	creer_styles($ARGV[1]);
+	parse_styles($ARGV[1]);
 	
 	# 6) Effectue un pre-traitement sur le fichier
 	my $raw = preprocesseur($ARGV[0]);
@@ -133,27 +133,31 @@ sub initDoc
 #_________________________________________
 sub creer_titre
 {
-	my ($niveau,$titre) = @_;
+	my ($niveau,$ordre,$titre) = @_;
 	$titre =~ s/_TAB_/\t/g;
 	
-	if(1==$niveau)
+	if(1==$ordre)
 	{
-		$t2 = 1;
-		$t3 = 0;
-		$titre = $titre1[$t1]."- ".$titre;
-		$t1++;
+		if(1==$niveau)
+		{
+			$t2 = 1;
+			$t3 = 0;
+			$titre = $titre1[$t1]."- ".$titre;
+			$t1++;
+		}
+		elsif(2==$niveau)
+		{
+			$t3 = 0;
+			$titre = $t2.". ".$titre;
+			$t2++;
+		}
+		else
+		{
+			$titre = $titre3[$t3].") ".$titre;
+			$t3++;
+		}
 	}
-	elsif(2==$niveau)
-	{
-		$t3 = 0;
-		$titre = $t2.". ".$titre;
-		$t2++;
-	}
-	else
-	{
-		$titre = $titre3[$t3].") ".$titre;
-		$t3++;
-	}
+	
 	$texte->appendParagraph
 	(
 	 	style => 'StyleTitre'.$niveau,
@@ -170,7 +174,7 @@ sub creer_tableau
 	
 	my ($tabtitle,$l,$c,@tab) = @_;
 		
-	my $feuille = $texte->appendTable('Table'.$countTab, $l, $c);
+	my $feuille = $texte->appendTable('Tableau'.$countTab, $l, $c);
 
 	my $i = 0;
 	
@@ -183,13 +187,22 @@ sub creer_tableau
 			$col =~ s/_TAB_//g;
 			$cell = $texte->getTableCell($feuille,$i,$j);
 			
-			$texte->appendParagraph
+			my $para = $texte->appendParagraph
 				(
 					text => $col,
 					style => "StyleTableau",
 					attachment => $cell
 				);
-				
+			
+			ajouter_hypertexte($para,$col);
+			
+			$texte->appendParagraph
+				(
+					text => "",
+					style => "StyleTableau",
+					attachment => $cell
+				);
+			
 			push(@contenu,$col);
 			$j++;
 		}
@@ -254,17 +267,19 @@ sub creer_image
 		text  	=> "Figure ".$fig.": ".$param[2]
 	);
 	
-	$texte->insertImageElement
+	$texte->createImageElement
                 (
 					"Image".$countImg,
 					title    => $param[2],
 					description     => $param[2],
-					after      	=> $p,
+					attachment      	=> $p,
 					legend => $p,
 					import          => $param[3],
 					size 			=> $param[0]." cm,".$param[1]." cm",
 					style			=> "StyleImage"
                 );
+	
+	creer_paragraphe("");
 	
 	$countImg++;
 }
@@ -285,13 +300,13 @@ sub creer_paragraphe
 
 	foreach my $p (@parag)
 	{
-		$parag = $texte->appendParagraph
+		my $para = $texte->appendParagraph
 		(
 			style 	=> 'StyleParagraphe',
 			text  	=> $p
 		);
 		push(@contenu,$p);
-		ajouter_hypertexte($parag,$p);
+		ajouter_hypertexte($para,$p);
 	}
 	
 	my $ret;
@@ -359,7 +374,7 @@ sub creer_EntetePage
 	my ($titre) = @_;
 	$titre = ajouter_tabulation($titre);
 	my $p = $deco->createParagraph($titre,"StyleEntete");
-	
+				
 	$deco->masterPageExtension($master,"header",$p);
 	
 	push(@contenu,$titre);
@@ -375,6 +390,7 @@ sub creer_PiedPage
 	
 	$titre = ajouter_tabulation($titre);
 	my $p = $deco->createParagraph($titre,"StylePied");
+				
 	$deco->appendElement($p, $deco->textField("page-number"));
 	$deco->masterPageExtension($master,"footer",$p);
 	push(@contenu,$titre);
@@ -382,7 +398,7 @@ sub creer_PiedPage
 
 #_________________________________________
 #
-# Creer un en-tete
+# Creer un saut de page
 #_________________________________________
 sub creer_saut_page
 {
@@ -391,6 +407,22 @@ sub creer_saut_page
 		
 	my $p = creer_paragraphe("");
 	$texte->setPageBreak($p,style=> "xyz",page=>"StylePages");
+}
+
+#_________________________________________
+#
+# Creer un saut de ligne
+#_________________________________________
+sub creer_saut_ligne
+{
+	
+	my ($param) = @_;
+		
+	$texte->appendParagraph
+	(
+		style 	=> 'StyleParagraphe',
+		text  	=> ""
+	);
 }
 
 #_________________________________________
@@ -447,7 +479,11 @@ sub ajouter_hypertexte
 	while($tmp ne "")
 	{	
 		if($tmp=~ /[\s]*(http[\S]+[^.,:\s]).*/){
-			$texte->setHyperlink($p,$1,$1);
+			$texte->setHyperlink(
+				$p,
+				$1,
+				$1,
+				properties => {'style' => "StyleHyperlink"});
 			$tmp = $';
 		}
 		else
@@ -497,8 +533,8 @@ sub preprocesseur
 	
 	while($ligne = <FICHIER>)
 	{
-		$ligne =~ s/^%%.*//g; #supprime les commentaires
-		$ligne =~ s/[\t\n\0\r]*$//g; #supprime les caractères de saut en fin de ligne
+		$ligne =~ s/^[\s]*%%.*//g; #supprime les commentaires
+		$ligne =~ s/[\t\n\r\0]*$//g; #supprime les caracteres de saut
 		chomp($ligne);
 		$raw = $raw.$ligne;
 		
@@ -520,9 +556,9 @@ sub preprocesseur
 	$raw =~ s/([^\\]{1})\}([\},])/$1:RLIGNE:$2/g; # forme }, ou }}  
 	
 	$raw =~ s/([^\\]{1})\[/$1#LTAG#/g; #forme [
-	$raw =~ s/([^\\]{1})\]:/$1#RTAG#:/g; #forme ]:
+	$raw =~ s/([^\\]{1})\]([\s]*):([\s]*)/$1#RTAG#:/g; #forme ]:
 	
-	$raw =~ s/:[\s]*\{/#LBLOC#/g;
+	$raw =~ s/([\s]*):([\s]*)\{/#LBLOC#/g;
 	$raw =~ s/([^\\]{1})\}/$1#RBLOC#/g;
 	
 	$raw =~ s/\\(.)/$1/g; # caracteres echappes
@@ -549,9 +585,17 @@ sub automate
 	
 	while($raw ne "")
 	{	
-		if($raw =~ /^#LTAG#TITRE([1-3])#RTAG##LBLOC#([^#]*)#RBLOC#/)
+		if($raw =~ /^#LTAG#TITRE([1-3])(\*){0,1}#RTAG##LBLOC#([^#]*)#RBLOC#/)
 		{
-			creer_titre($1,$2);
+			if($2 eq "*") # liste non ordonnnee
+			{
+				creer_titre($1,0,$3);
+			}
+			else
+			{
+				creer_titre($1,1,$3);
+			}
+			
 			$raw = $`.$';
 		}
 		elsif($raw =~ /^#LTAG#CODE#RTAG##LBLOC#([^#]*)#RBLOC#/)
@@ -605,7 +649,7 @@ sub automate
 				$el =~ s/:LLIGNE://g;
 				$el =~ s/:RLIGNE://g;
 				
-				@col = split(",",$el);
+				@col = split(";;",$el);
 				
 				if($isTitle)
 				{
@@ -626,9 +670,14 @@ sub automate
 			}
 			$raw = $`.$';
 		}
-		elsif($raw =~ /_NP_/)
+		elsif($raw =~ /^_NP_/)
 		{
 			creer_saut_page("");
+			$raw = $';
+		}
+		elsif($raw =~ /^_NL_/)
+		{
+			creer_saut_ligne("");
 			$raw = $';
 		}	
 		else{
@@ -642,56 +691,19 @@ sub automate
 
 #_________________________________________
 #
-# Creer les styles du documents a partir
-# du fichier style
+# Recupere chaque section du style 
+# (propriete,nom,type,...)
 #_________________________________________
-sub creer_styles
+sub splitStyle
 {
-	my ($filename) = @_;
-	
-	open(FICHIER ,"<".$filename) or die("Ereur ouverture fichier style");
-	
-	my $raw = "";
-	
-	while($ligne = <FICHIER>)
-	{
-		chomp($ligne);
-		$raw = $raw.$ligne;
-	}
-	
-	close(FICHIER);	
-	
-	$raw =~ s/\t//g;
-	$raw =~ s/([\s])[\s]{1,}/$1/g;
-	
-	while($raw ne "")
-	{
-		if( $raw =~ /\[([a-zA-Z0-9]+)\]\{\{([^\}]*)\},\{([^\}]*)\},\{([^\}]*)\}\}/){
-			my @type = split(",",$2);
-			my @p1 = split(",",$3);
-			my @p2 = split(",",$4);
-			ajouter_style($1,\@type,\@p1,\@p2);
-			$raw = $`.$';
-		}
-		else{
-			$raw = "";
-		}
-	}
-}
 
-#_________________________________________
-#
-# Ajoute un style au document
-#_________________________________________
-sub ajouter_style
-{
-	my ($nom,$type,$prop1,$prop2) = @_;
+	my ($t,$prop1,$prop2) = @_;
 	
 	my %type;
 	my %propa;
 	my %propb;
-
-	foreach my $e (@$type)
+			
+	foreach my $e (@$t)
 	{
 		my @elem = split("[\'\"]:[\'\"]",$e);
 		$elem[0] =~ s/[\'\"]//g;
@@ -714,17 +726,72 @@ sub ajouter_style
 		$propb{$elem[0]} = $elem[1];
 	}
 	
-	$deco->createStyle
-	(
-		$nom,
-		%type,
-		properties	=> \%propa
-	);
+	return (\%type,\%propa,\%propb);
+}
+#_________________________________________
+#
+# Creer les styles du documents a partir
+# du fichier style
+#_________________________________________
+sub parse_styles
+{
+	my ($filename) = @_;
 	
-	$deco->updateStyle
-	(
-		$nom,
-		properties	=> \%propb
-	);	
+	open(FICHIER ,"<".$filename) or die("Ereur ouverture fichier style");
+	
+	my $raw = "";
+	
+	while($ligne = <FICHIER>)
+	{
+		$ligne =~ s/^[\s]*%%.+//g; #supprime les commentaires
+		chomp($ligne);
+		$raw = $raw.$ligne;
+	}
+	
+	close(FICHIER);	
+	
+	$raw =~ s/\t//g;
+	$raw =~ s/([\s])[\s]{1,}/$1/g;
+	
+	while($raw ne "")
+	{
+		if( $raw =~ /\[([a-zA-Z0-9]+)\]\{\{([^\}]*)\},\{([^\}]*)\},\{([^\}]*)\}\}/)
+		{
+			my @t  = split(",",$2);
+			my @pa = split(",",$3);
+			my @pb = split(",",$4);
+			
+			my ($type,$p1,$p2) = splitStyle(\@t,\@pa,\@pb);
+			
+			creer_style($1,$type,$p1,$p2);
+			
+			$raw = $`.$';
+		}
+		else{
+			$raw = "";
+		}
+	}
+}
+
+#_________________________________________
+#
+# Ajoute un style au document
+#_________________________________________
+sub creer_style
+{
+	my ($nom,$type,$propa,$propb) = @_;
+	
+		$deco->createStyle
+		(
+			$nom,
+			%$type,
+			properties	=> $propa
+		);
+		
+		$deco->updateStyle
+		(
+			$nom,
+			properties	=> $propb
+		);	
 	
 }
