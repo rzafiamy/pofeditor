@@ -20,6 +20,7 @@ if((not defined $ARGV[0]) &&(not defined $ARGV[1] ))
 my @contenu;
 my @titre1;
 my @titre3;
+my @tableMatiere;
 my $t1;
 my $t2;
 my $t3;
@@ -48,15 +49,15 @@ else
 	@titre3		= ("a","b","c","d","e","f","g","h","i","j","k",
 					"l","m","n","o","p","q","r","s","t","u","v",
 					"w","y","z");
-				
+	
 	# 1) Creee un document ODT vide
 	$archive 							= creerDoc($ARGV[0]);
 	
 	# 2) Initialise l'objet oodoc
 	($meta,$texte,$deco) 				= initDoc($archive);
 	
-	# 3) Definit le titre du document
-	$meta->title('Rapport');
+	# 3) Definit les infos du document par defaut
+	updateMetaInfo($meta,"REPORT","POF EDITOR","Rija ZAFIAMY","fr-FR");
 	
 	# 4) Creee un style de page
 	$layout = $deco->pageLayout("Standard");
@@ -70,6 +71,29 @@ else
 	
 	# 7) Traite le document POF
 	automate($raw);
+	
+	# foreach my $e (@tableMatiere)
+	# {
+
+		# foreach my $g (keys %$e)
+		# {
+			# if($g=~"3")
+			# {
+				# $$e{$g}= remplir_Paragrahe($$e{$g},".");
+				# creer_paragraphe($$e{$g},"StyleTableMatiereTitre3");
+			# }
+			# elsif($g=~"2")
+			# {
+				# $$e{$g}= remplir_Paragrahe($$e{$g},".");
+				# creer_paragraphe($$e{$g},"StyleTableMatiereTitre2");
+			# }
+			# elsif($g=~"1")
+			# {
+				# $$e{$g}= remplir_Paragrahe($$e{$g},".");
+				# creer_paragraphe($$e{$g},"StyleTableMatiereTitre1");
+			# }	
+		# }
+	# }
 	
 	# 8) Met a jour le fichier ODT
 	$archive->save;
@@ -95,6 +119,23 @@ sub creerDoc
 	
 	return $archive;
 }
+
+# --------------------------------------
+# Set meta information
+# return:
+#	- meta
+#---------------------------------------
+sub updateMetaInfo
+{
+	my ($meta,$title,$subject,$author,$lang)	= @_;
+
+	$meta->title($title);
+	$meta->subject($subject);
+	$meta->creator($author);
+	$meta->initial_creator($author);
+	$meta->language($lang);
+}
+
 # --------------------------------------
 # Instance objet ODoc
 # return:
@@ -142,21 +183,27 @@ sub creer_titre
 		{
 			$t2 = 1;
 			$t3 = 0;
-			$titre = $titre1[$t1]."- ".$titre;
+			$titre = "Chapter ".$titre1[$t1].": ".$titre;
 			$t1++;
 		}
 		elsif(2==$niveau)
-		{
-			$t3 = 0;
-			$titre = $t2.". ".$titre;
-			$t2++;
+		{	
+			$t2 = 1;
+			$titre = uc($titre3[$t3]).") ".$titre;
+			$t3++;
 		}
 		else
 		{
-			$titre = $titre3[$t3].") ".$titre;
-			$t3++;
-		}
+			$titre = $t2.". ".$titre;
+			$t2++;
+		}	
+		
+		my %hash  = ("$niveau" => "$titre");
+	
+		push(@tableMatiere,\%hash);
 	}
+	
+
 	
 	$texte->appendParagraph
 	(
@@ -174,7 +221,7 @@ sub creer_tableau
 	
 	my ($tabtitle,$l,$c,@tab) = @_;
 		
-	my $feuille = $texte->appendTable('Tableau'.$countTab, $l, $c);
+	my $feuille = $texte->appendTable('Tableau'.$countTab, $l, $c,"table:style-name" => 'StyleTab'.$countTab);
 
 	my $i = 0;
 	
@@ -185,25 +232,33 @@ sub creer_tableau
 		foreach my $col (@$li)
 		{
 			$col =~ s/_TAB_//g;
+			$col =~ s/_DIESE_/#/g;
 			$cell = $texte->getTableCell($feuille,$i,$j);
 			
-			my $para = $texte->appendParagraph
-				(
-					text => $col,
-					style => "StyleTableau",
-					attachment => $cell
-				);
+			$texte->cellStyle($cell,"StyleCell");
 			
-			ajouter_hypertexte($para,$col);
+			my $styleTab	= "StyleTableau$j";
 			
-			$texte->appendParagraph
-				(
-					text => "",
-					style => "StyleTableau",
-					attachment => $cell
-				);
+			if(0==$i)
+			{
+				$styleTab	= "StyleTableauTete"
+			}
 			
-			push(@contenu,$col);
+			my @parag = split("_NL_",$col);
+			
+			foreach my $e (@parag)
+			{
+				my $para = $texte->appendParagraph
+						(
+							text => $e,
+							style => $styleTab,
+							attachment => $cell
+						);
+						
+				ajouter_hypertexte($para,$e);
+				push(@contenu,$col);
+			}
+			
 			$j++;
 		}
 		$i++;
@@ -290,7 +345,14 @@ sub creer_image
 #_________________________________________
 sub creer_paragraphe
 {
-	my ($paragraphe) = @_;
+	my $paragraphe		= shift;
+	my $style			= shift;
+	
+	if(not defined $style)
+	{
+		$style = "StyleParagraphe";
+	
+	}
 	
 	$paragraphe =~ s/_TAB_//g;
 	$paragraphe =~ s/_DIESE_/#/g;
@@ -302,7 +364,7 @@ sub creer_paragraphe
 	{
 		my $para = $texte->appendParagraph
 		(
-			style 	=> 'StyleParagraphe',
+			style 	=> $style,
 			text  	=> $p
 		);
 		push(@contenu,$p);
@@ -313,7 +375,7 @@ sub creer_paragraphe
 		
 	$ret = $texte->appendParagraph
 	(
-	 	style 	=> 'StyleParagraphe',
+	 	style 	=> $style,
 		text  	=> ""
 	);
 	
@@ -327,7 +389,7 @@ sub creer_paragraphe
 #_________________________________________
 sub creer_code
 {
-	my ($code) = @_;
+	my ($num,$code) = @_;
 	
 	$code =~ s/_TAB_/\t/g;
 	$code =~ s/_DIESE_/#/g;
@@ -335,21 +397,21 @@ sub creer_code
 	
 	$texte->appendParagraph
 	(
-		style 	=> 'StyleCode',
+		style 	=> "StyleCode$num",
 		text  	=> ""
 	);
 	foreach my $c (@lignes)
 	{
 		$texte->appendParagraph
 		(
-			style 	=> 'StyleCode',
+			style 	=> "StyleCode$num",
 			text  	=> $c
 		);
 		push(@contenu,$c);
 	}
 	$texte->appendParagraph
 	(
-		style 	=> 'StyleCode',
+		style 	=> "StyleCode$num",
 		text  	=> ""
 	);
 	my $ret;
@@ -531,13 +593,12 @@ sub preprocesseur
 	
 	open(FICHIER ,"<".$fichier) or die("Ereur ouverture fichier modele");
 	
-	while($ligne = <FICHIER>)
+	while(my $ligne = <FICHIER>)
 	{
-		$ligne =~ s/^[\s]*%%.*//g; #supprime les commentaires
-		$ligne =~ s/[\t\n\r\0]*$//g; #supprime les caracteres de saut
+		$ligne =~ s/^[\s]*%%.*//g; 		#supprime les commentaires
+		$ligne =~ s/[\t\n\r\0]*$//g; 	#supprime les caracteres de saut
 		chomp($ligne);
 		$raw = $raw.$ligne;
-		
 	}
 	
 	close(FICHIER);	
@@ -598,11 +659,20 @@ sub automate
 			
 			$raw = $`.$';
 		}
-		elsif($raw =~ /^#LTAG#CODE#RTAG##LBLOC#([^#]*)#RBLOC#/)
+		elsif($raw =~ /^#LTAG#CODE([1-3]){0,1}#RTAG##LBLOC#([^#]*)#RBLOC#/)
 		{
-			creer_code($1);
+			my $num = "";
+			my $niveau = $1;
+			my $code = $2;
+			
 			$raw = $`.$';
-		}		
+			
+			if($niveau =~/^[1-3]$/)
+			{
+				$num = $niveau;
+			}
+			creer_code($num,$code);
+		}
 		elsif($raw =~ /^#LTAG#ENTETE#RTAG##LBLOC#([^#]*)#RBLOC#/)
 		{
 			creer_EntetePage($1);
@@ -632,6 +702,44 @@ sub automate
 		{
 			creer_image($1);
 			$raw = $`.$';
+		}
+		elsif($raw =~ /^#LTAG#DOCINFO#RTAG##LBLOC#([^#]+)#RBLOC#/)
+		{
+			$raw = $`.$';
+			
+			my @infos	= split(",",$1);
+			
+			foreach my $e (@infos)
+			{
+				my $author;
+				my $title;
+				my $subject;
+				my $lang;
+				
+				if($e =~ /author:(.+)$/)
+				{	
+					$author	= $1;
+				}
+				if($e =~ /title:(.+)$/)
+				{	
+					$title	= $1
+				
+				}
+				if($e =~ /subject:(.+)$/)
+				{	
+					$subject	= $1
+				
+				}
+				if($e =~ /lang:(.+)$/)
+				{	
+					$lang	= $1
+				
+				}
+				
+				updateMetaInfo($meta,$title,$subject,$author,$lang);
+			
+			}
+			
 		}		
 		elsif($raw =~ /^#LTAG#TABLEAU#RTAG##LBLOC#([^#]*)#RBLOC#/)
 		{
@@ -794,4 +902,27 @@ sub creer_style
 			properties	=> $propb
 		);	
 	
+}
+
+#_________________________________________
+#
+# Remplir delimiteur
+#_________________________________________
+sub remplir_Paragrahe
+{
+	my $pgraphe 	= shift;
+	my $motif		= shift;
+	
+	my $taille	= length($pgraphe);
+	my $reste		= 60 - $taille;
+	
+	if($reste > 0)
+	{
+		for(my $i=0;$i<$reste;$i++)
+		{
+			$pgraphe .= $motif;
+		}
+	}
+	
+	return $pgraphe;
 }
