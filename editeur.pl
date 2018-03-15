@@ -7,11 +7,12 @@
 #________________________________________________
 
 use OpenOffice::OODoc;
+use Getopt::Std;
+
 
 if((not defined $ARGV[0]) &&(not defined $ARGV[1] ))
 {
-	print "Syntax error : $0 <-f|model> <text_to_format|style>\n";
-	exit 1;
+	aide();
 }
 
 #________________________________________________
@@ -33,6 +34,9 @@ my $archive;
 my $countTab;
 my $countImg;
 
+#________________________________
+# FORMATER / BEAUTIFULER 
+#________________________________
 if($ARGV[0] eq "-f")
 {
 	formater($ARGV[1]);
@@ -72,32 +76,38 @@ else
 	# 7) Traite le document POF
 	automate($raw);
 	
-	# foreach my $e (@tableMatiere)
-	# {
-
-		# foreach my $g (keys %$e)
-		# {
-			# if($g=~"3")
-			# {
-				# $$e{$g}= remplir_Paragrahe($$e{$g},".");
-				# creer_paragraphe($$e{$g},"StyleTableMatiereTitre3");
-			# }
-			# elsif($g=~"2")
-			# {
-				# $$e{$g}= remplir_Paragrahe($$e{$g},".");
-				# creer_paragraphe($$e{$g},"StyleTableMatiereTitre2");
-			# }
-			# elsif($g=~"1")
-			# {
-				# $$e{$g}= remplir_Paragrahe($$e{$g},".");
-				# creer_paragraphe($$e{$g},"StyleTableMatiereTitre1");
-			# }	
-		# }
-	# }
-	
 	# 8) Met a jour le fichier ODT
 	$archive->save;
 }
+
+
+# --------------------------------------
+# Affichage de message d'aide
+#---------------------------------------
+sub aide
+{
+	system("clear")==0 or system("cls");
+
+	print "=====================================================\n";
+	print "         EDITOR : Generate ODT file from POF         \n";
+	print "=====================================================\n";
+	print "Syntax : \n\t $0 <-f | -c> <file.pof> -s <style.sty>  -o <file.odt>\n\n\n";
+
+	print "-c: Use the specified file to create the file specified in -o option\n";
+	print "-f: Format the specified file then print the output to the standard output\n";
+	print "-s: use the given file instead default one. If not specified , the default one is used.\n";
+	print "-o: name of the output file , the name of input file is used if not set.\n\n\n";
+
+	print "Examples:\n";
+	print "\t $0 -f document.pof";
+	print "\t $0 -c document.pof\n";
+	print "\t $0 -c document.pof -s style.sty\n";
+	print "\t $0 -c document.pof -o document.odt\n";
+	print "\t $0 -c document.pof -s style.sty -o document.odt\n";
+
+	exit 1;
+}
+
 
 # --------------------------------------
 # Creation d'un document ODT vide
