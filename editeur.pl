@@ -10,9 +10,44 @@ use OpenOffice::OODoc;
 use Getopt::Std;
 
 
-if((not defined $ARGV[0]) &&(not defined $ARGV[1] ))
+#________________________________________________
+# Recuperation des parametres
+#________________________________________________
+my %options=();
+
+getopts("c:f:o:s:", \%options);
+
+if((!defined $options{"c"}) and (!defined $options{"f"}))
 {
-	aide();
+	aide("Missing parameter -c or -f");
+}
+elsif((defined $options{"c"}) and (defined $options{"f"}))
+{
+	aide("Option -c and -f cannot be used once a time !!!");
+}
+
+
+my $pofFilename    = defined $options{"c"}?$options{"c"}:$options{"f"};
+my $outputFilename = defined $options{"o"}?$options{"o"}:$pofFilename;
+   $outputFilename =~ s/\.pof$/\.odt/g;
+my $styleFilename  = defined $options{"s"}?$options{"s"}:"style.sty";
+
+if(! ($outputFilename =~/\.odt$/i))
+{
+	$outputFilename = $outputFilename.".odt";
+}
+
+#________________________________________________
+# Verifie l'existence des fichiers
+#________________________________________________
+if(! -f $pofFilename)
+{
+	aide("No such POF file :".$pofFilename);
+}
+
+if((defined $options{"s"}) and (! -f $styleFilename))
+{
+	aide("No such style file :".$styleFilename);
 }
 
 #________________________________________________
@@ -37,9 +72,9 @@ my $countImg;
 #________________________________
 # FORMATER / BEAUTIFULER 
 #________________________________
-if($ARGV[0] eq "-f")
+if(defined $options{"f"})
 {
-	formater($ARGV[1]);
+	formater($options{"f"});
 }
 else
 {
@@ -55,7 +90,7 @@ else
 					"w","y","z");
 	
 	# 1) Creee un document ODT vide
-	$archive 							= creerDoc($ARGV[0]);
+	$archive 							= creerDoc($outputFilename);
 	
 	# 2) Initialise l'objet oodoc
 	($meta,$texte,$deco) 				= initDoc($archive);
@@ -68,10 +103,10 @@ else
 	$master = $deco->createMasterPage("StylePages",layout=>$layout);
 	
 	# 5) Creee tous les styles du document a partir de style.sty
-	parse_styles($ARGV[1]);
+	parse_styles($styleFilename);
 	
 	# 6) Effectue un pre-traitement sur le fichier
-	my $raw = preprocesseur($ARGV[0]);
+	my $raw = preprocesseur($pofFilename);
 	
 	# 7) Traite le document POF
 	automate($raw);
@@ -86,7 +121,10 @@ else
 #---------------------------------------
 sub aide
 {
+	my ($msg) = @_;
+
 	system("clear")==0 or system("cls");
+
 
 	print "=====================================================\n";
 	print "         EDITOR : Generate ODT file from POF         \n";
@@ -99,11 +137,18 @@ sub aide
 	print "-o: name of the output file , the name of input file is used if not set.\n\n\n";
 
 	print "Examples:\n";
-	print "\t $0 -f document.pof";
-	print "\t $0 -c document.pof\n";
+	print "\t $0 -f document.pof\n";
 	print "\t $0 -c document.pof -s style.sty\n";
 	print "\t $0 -c document.pof -o document.odt\n";
 	print "\t $0 -c document.pof -s style.sty -o document.odt\n";
+
+
+	if(defined $msg)
+	{
+		print "----------------------------------------------\n";
+		print "ERROR >>> $msg\n";
+		print "----------------------------------------------\n";
+	}
 
 	exit 1;
 }
@@ -118,14 +163,14 @@ sub creerDoc
 	
 	my $doc = ooDocument
 	(
-		file 	=> $nom_fichier.".odt",
+		file 	=> $nom_fichier,
 		create 	=> 'text',
 		member	=> 'content'
 	);
 
 	$doc->save;
 	
-	my $archive 	= ooFile($nom_fichier.".odt");
+	my $archive 	= ooFile($nom_fichier);
 	
 	return $archive;
 }
